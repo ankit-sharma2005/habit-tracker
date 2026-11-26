@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard · Habit Tracker{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+  <div>
+    <h1 class="h3 mb-1">Today's habits</h1>
+    <p class="text-muted mb-0">
+      {{ today.strftime('%A %d %B %Y') }} · {{ done_today }} of {{ cards|length }} completed
+    </p>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('habits.add') }}">+ Add habit</a>
+</div>
+
+{# Summary tiles ---------------------------------------------------------- #}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="stat-label">Habits</div>
+      <div class="stat-value">{{ cards|length }}</div>
+      <div class="stat-note">being tracked</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="stat-label">Done today</div>
+      <div class="stat-value">{{ done_today }}/{{ cards|length }}</div>
+      <div class="stat-note">completed today</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="stat-label">Active streak</div>
+      <div class="stat-value">{{ best_streak }} {{ 'day' if best_streak == 1 else 'days' }}</div>
+      <div class="stat-note">best current run</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="stat-label">Average week</div>
+      <div class="stat-value">{{ '%.1f'|format(average_week) }}%</div>
+      <div class="stat-note">last 7 days</div>
+    </div>
+  </div>
+</div>
+
+{% if cards %}
+<div class="row g-3">
+  {% for card in cards %}
+  <div class="col-lg-6">
+    <div class="card habit-card h-100 {{ 'habit-card-done' if card.done_today }}">
+      <div class="card-body d-flex flex-column">
+
+        <div class="d-flex justify-content-between align-items-start gap-2">
+          <div>
+            <h2 class="h5 mb-1">{{ card.name }}</h2>
+            <span class="chip">{{ card.category }}</span>
+          </div>
+          {% if card.done_today %}
+            <span class="done-pill">✔ Done today</span>
+          {% else %}
+            <form method="post" action="{{ url_for('habits.complete', habit_id=card.id) }}">
+              <button type="submit" class="btn btn-sm btn-success">Mark done</button>
+            </form>
+          {% endif %}
+        </div>
+
+        <p class="text-muted small mt-2 mb-3">
+          {{ card.description if card.description else 'No description' }}
+        </p>
+
+        <div class="d-flex justify-content-between small text-muted mb-1">
+          <span>Last 7 days</span>
+          <span>{{ card.weekly_count }}/{{ card.weekly_possible }} · {{ '%.1f'|format(card.weekly_percent) }}%</span>
+        </div>
+        <div class="progress" role="progressbar" aria-label="Weekly completion"
+             aria-valuenow="{{ card.weekly_percent }}" aria-valuemin="0" aria-valuemax="100" style="height: 8px;">
+          <div class="progress-bar" style="width: {{ card.weekly_percent }}%"></div>
+        </div>
+
+        <dl class="metric-row mt-3 mb-2">
+          <div><dt>Week</dt><dd>{{ '%.1f'|format(card.weekly_percent) }}%</dd></div>
+          <div><dt>Overall</dt><dd>{{ '%.1f'|format(card.overall_percent) }}%</dd></div>
+          <div><dt>Streak</dt><dd>{{ card.current_streak }} d</dd></div>
+          <div><dt>Best</dt><dd>{{ card.longest_streak }} d</dd></div>
+          <div><dt>Target</dt><dd>{{ card.current_streak }}/{{ card.target_days }}</dd></div>
+        </dl>
+
+        <p class="coach mb-3">{{ card.message }}</p>
+
+        <div class="d-flex align-items-center gap-3 small mt-auto pt-1">
+          <a href="{{ url_for('streaks.streaks', habit_id=card.id) }}">Streaks</a>
+          <a href="{{ url_for('habits.edit', habit_id=card.id) }}">Edit</a>
+          <form method="post" class="confirm-form d-inline"
+                action="{{ url_for('habits.delete', habit_id=card.id) }}"
+                data-confirm="Delete '{{ card.name|e }}' and all of its completion history?">
+            <button type="submit" class="btn btn-link btn-sm text-danger p-0 align-baseline">Delete</button>
+          </form>
+          <span class="ms-auto text-muted">Started {{ card.start_date.strftime('%d %b %Y') }}</span>
+        </div>
+
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state text-center">
+  <div class="empty-mark">🌱</div>
+  <h2 class="h5">No habits yet</h2>
+  <p class="text-muted mb-3">Add your first habit and today's tick will start your streak.</p>
+  <a class="btn btn-primary" href="{{ url_for('habits.add') }}">Add your first habit</a>
+</div>
+{% endif %}
+{% endblock %}

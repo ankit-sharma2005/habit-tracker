@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} · Habit Tracker{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card shadow-sm">
+      <div class="card-body p-4">
+
+        <h1 class="h4 mb-1">{{ title }}</h1>
+        <p class="text-muted small mb-4">{{ subtitle }}</p>
+
+        <form method="post" novalidate>
+          <div class="row g-3">
+
+            <div class="col-md-8">
+              <label class="form-label" for="name">Habit name <span class="text-danger">*</span></label>
+              <input class="form-control" id="name" name="name" type="text"
+                     value="{{ values.name }}" maxlength="60" required autofocus
+                     placeholder="e.g. Morning jog">
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label" for="category">Category</label>
+              <input class="form-control" id="category" name="category" type="text"
+                     value="{{ values.category }}" maxlength="30" placeholder="General">
+            </div>
+
+            <div class="col-12">
+              <label class="form-label" for="description">Description</label>
+              <textarea class="form-control" id="description" name="description" rows="2"
+                        maxlength="200" placeholder="Optional: what does 'done' look like?">{{ values.description }}</textarea>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label" for="start_date">Start date</label>
+              <input class="form-control" id="start_date" name="start_date" type="date"
+                     value="{{ values.start_date }}" max="{{ today.isoformat() }}">
+              <div class="form-text">Leave blank to start today. Future dates are refused.</div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label" for="target_days">Target streak (days)</label>
+              <input class="form-control" id="target_days" name="target_days" type="number"
+                     value="{{ values.target_days }}" min="1" max="365" step="1">
+              <div class="form-text">Reaching this many days in a row earns the 🎉 badge.</div>
+            </div>
+
+          </div>
+
+          <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn btn-primary">{{ submit_label }}</button>
+            <a class="btn btn-outline-secondary" href="{{ url_for('habits.dashboard') }}">Cancel</a>
+            {% if habit %}
+              <a class="btn btn-link ms-auto text-muted"
+                 href="{{ url_for('streaks.streaks', habit_id=habit.id) }}">View streaks</a>
+            {% endif %}
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

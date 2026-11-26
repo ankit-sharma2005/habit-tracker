@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block title %}Streaks · Habit Tracker{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+  <div>
+    <h1 class="h3 mb-1">Streaks</h1>
+    <p class="text-muted mb-0">Pick a habit, log a day, and watch the chain build up.</p>
+  </div>
+  <a class="btn btn-outline-primary" href="{{ url_for('habits.add') }}">+ Add habit</a>
+</div>
+
+{% if not selected %}
+
+  <div class="empty-state text-center">
+    <div class="empty-mark">🔥</div>
+    <h2 class="h5">No habits to show yet</h2>
+    <p class="text-muted mb-3">Add a habit first, then come back to see its streak calendar.</p>
+    <a class="btn btn-primary" href="{{ url_for('habits.add') }}">Add your first habit</a>
+  </div>
+
+{% else %}
+
+{# ---- Habit picker + "add streak" form -------------------------------- #}
+<div class="card mb-4">
+  <div class="card-body">
+    <div class="row g-3">
+
+      <div class="col-lg-5">
+        <form method="get" action="{{ url_for('streaks.streaks') }}">
+          <label class="form-label" for="habit-select">Habit</label>
+          <select class="form-select" id="habit-select" name="habit_id" onchange="this.form.submit()">
+            {% for habit in habits %}
+              <option value="{{ habit.id }}" {{ 'selected' if habit.id == selected.id }}>{{ habit.name }}</option>
+            {% endfor %}
+          </select>
+          <noscript>
+            <button type="submit" class="btn btn-outline-secondary btn-sm mt-2">Show this habit</button>
+          </noscript>
+        </form>
+      </div>
+
+      <div class="col-lg-7">
+        <form method="post" action="{{ url_for('streaks.add_streak') }}">
+          <div class="row g-2 align-items-end">
+            <div class="col-sm-5">
+              <label class="form-label" for="entry-habit">Habit to complete</label>
+              <select class="form-select" id="entry-habit" name="habit_id">
+                {% for habit in habits %}
+                  <option value="{{ habit.id }}" {{ 'selected' if habit.id == selected.id }}>{{ habit.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label" for="entry_date">Date</label>
+              <input class="form-control" type="date" id="entry_date" name="entry_date"
+                     value="{{ today.isoformat() }}" max="{{ today.isoformat() }}" required>
+            </div>
+            <div class="col-sm-3 d-grid">
+              <button type="submit" class="btn btn-primary">Add Streak</button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+{# ---- Target badge ------------------------------------------------------ #}
+{% if summary.target_reached %}
+  <div class="streak-banner mb-3">
+    🎉 {{ summary.target_days }}-day streak completed!
+    <span class="streak-banner-note">Longest run so far: {{ summary.longest_streak }} days.</span>
+  </div>
+{% endif %}
+
+{# ---- Stat cards ------------------------------------------------------- #}
+<div class="row g-3 mb-3">
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="stat-label">Current streak</div>
+      <div class="stat-value">{{ summary.current_streak }} {{ 'day' if summary.current_streak == 1 else 'days' }}</div>
+      <div class="stat-note">counting back from today</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="stat-label">Longest streak</div>
+      <div class="stat-value">{{ summary.longest_streak }} {{ 'day' if summary.longest_streak == 1 else 'days' }}</div>
+      <div class="stat-note">best run ever</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="stat-label">Total completions</div>
+      <div class="stat-value">{{ summary.total_completions }}</div>
+      <div class="stat-note">since {{ summary.start_date.strftime('%d %b %Y') }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="stat-label">This week</div>
+      <div class="stat-value">{{ '%.1f'|format(summary.weekly_percent) }}%</div>
+      <div class="stat-note">{{ summary.weekly_count }}/{{ summary.weekly_possible }} days</div>
+    </div>
+  </div>
+</div>
+
+{# ---- Target progress -------------------------------------------------- #}
+<div class="card mb-4">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center small mb-1">
+      <span class="fw-semibold">Target streak: {{ summary.target_days }} days</span>
+      <span class="text-muted">
+        current run {{ summary.current_streak }}/{{ summary.target_days }}
+        {% if summary.target_reached %} · target reached ✔{% endif %}
+      </span>
+    </div>
+    <div class="progress" role="progressbar" aria-label="Progress towards the target streak"
+         aria-valuenow="{{ summary.target_progress }}" aria-valuemin="0" aria-valuemax="100" style="height: 10px;">
+      <div class="progress-bar bg-warning" style="width: {{ summary.target_progress }}%"></div>
+    </div>
+    <p class="coach mt-3 mb-0">💬 {{ summary.message }}</p>
+  </div>
+</div>
+
+{# ---- 30-day grid ------------------------------------------------------ #}
+<div class="card mb-4">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h2 class="h6 text-uppercase text-muted mb-0">Last 30 days</h2>
+      <span class="small text-muted">{{ selected.name }}</span>
+    </div>
+
+    <div class="day-grid">
+      {% for box in boxes %}
+        <div class="day-box day-{{ box.status }}{{ ' day-highlight' if box.highlight }}{{ ' day-today' if box.is_today }}"
+             title="{{ box.date.strftime('%d %b %Y') }} · {{ 'completed' if box.status == 'done' else ('missed' if box.status == 'missed' else 'not started') }}">
+          <span class="day-mark">
+            {%- if box.status == 'done' -%}✔{%- elif box.status == 'missed' -%}✘{%- endif -%}
+          </span>
+          <span class="day-num">{{ box.date.day }}</span>
+        </div>
+      {% endfor %}
+    </div>
+
+    <div class="legend">
+      <span><i class="legend-box legend-done">✔</i> completed</span>
+      <span><i class="legend-box legend-missed">✘</i> missed</span>
+      <span><i class="legend-box legend-empty"></i> not started</span>
+      <span><i class="legend-box legend-gold">✔</i> inside a completed target streak</span>
+    </div>
+  </div>
+</div>
+
+{# ---- Charts ----------------------------------------------------------- #}
+<div class="row g-3" id="streak-page"
+     data-habit-id="{{ selected.id }}"
+     data-chart-url="{{ url_for('streaks.chart_data') }}">
+
+  <div class="col-lg-7">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2 class="h6 text-uppercase text-muted mb-0">Completions per day</h2>
+          <select id="chart-range" class="form-select form-select-sm w-auto" aria-label="Chart range">
+            <option value="7" selected>Last 7 days</option>
+            <option value="30">Last 30 days</option>
+          </select>
+        </div>
+        <div class="chart-holder">
+          <canvas id="completionsChart" aria-label="Completions per day chart" role="img"></canvas>
+        </div>
+        <p class="small text-muted mb-0 mt-2" id="chart-summary"></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card h-100">
+      <div class="card-body">
+        <h2 class="h6 text-uppercase text-muted mb-3">Overall completion</h2>
+        <div class="chart-holder">
+          <canvas id="completionChart" aria-label="Overall completion doughnut chart" role="img"></canvas>
+        </div>
+        <p class="text-center small text-muted mb-0 mt-2" id="doughnut-caption"></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+  {% if selected %}
+    <script src="{{ url_for('static', filename='js/streaks.js') }}"></script>
+  {% endif %}
+{% endblock %}
